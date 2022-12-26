@@ -1,0 +1,10 @@
+{
+  "domain": "heatmaster_hassio",
+  "name": "Heatmaster for Homeassistant",
+  "integration_type": "device",
+  "documentation": "",
+  "dependencies": [],
+  "codeowners": [],
+  "requirements": [],
+  "iot_class": "local_polling",
+}
