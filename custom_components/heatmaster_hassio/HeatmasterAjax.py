@@ -52,6 +52,7 @@ class HeatmasterAjax():
                                cookies={"Security-Hint": login1_keys[1]},
                                timeout=30)
         self.auth_cookie = {"Security-Hint": login2.text.split(',')[1]}
+        logging.info("Login for heatmaster was successful")
 
     def _generate_server_challenge(self,
                                    server_key: int) -> int:
@@ -89,8 +90,10 @@ class HeatmasterAjax():
             #ID 1 is the title that contains the status of the furnance.
             if item_val[0][1] == '1':
                 if "Heating" in item_val[1][1].strip(' '):
+                    logging.info("Set sate to Heating")
                     self.status = 0
                 elif "Idle" in item_val[1][1].strip(' '):
+                    logging.info("Set sate to Idle")
                     self.status = 1
 
     def get_data(self) -> dict:
@@ -120,6 +123,7 @@ class HeatmasterAjax():
             self._set_status(status_doc)
             return None
 
+        logging.info("Polled data from Heatmaster")
         for item in document.getElementsByTagName("p"):
             item_val = item.attributes.items()
             if item_val[1][1] == 'n':

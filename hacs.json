@@ -1,0 +1,5 @@
+{
+  "name": "Heatmaster for Homeassistant",
+  "render_readme": true,
+  "iot_class": "Local Polling"
+}
