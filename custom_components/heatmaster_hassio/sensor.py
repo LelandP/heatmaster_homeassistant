@@ -11,7 +11,7 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.helpers.entity import Entity
-from homeassistant.const import TEMP_CELSIUS
+from homeassistant.const import TEMP_FAHRENHEIT
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.entity import DeviceInfo
@@ -21,11 +21,11 @@ from .heatmasterajax import HeatmasterAjax
 _LOGGER = logging.getLogger(__name__)
 
 DOMAIN="heatmaster_hassio"
-SENSOR_LIST = [["Water Temperature","Temperature"],
-               ["O2","o2"],
-               ["Top Damper","Top Damper"],
-               ["Bottom Damper","Bot Damper"],
-               ["Furnace Status","Status"]]
+SENSOR_LIST = [["Water Temperature", "Temperature", SensorDeviceClass.TEMPERATURE, TEMP_FAHRENHEIT],
+               ["O2", "o2", None, "%"],
+               ["Top Damper", "Top Damper", None, "%"],
+               ["Bottom Damper", "Bot Damper", None, "%"],
+               ["Furnace Status", "Status", None, ""]]
 
 
 def setup_entry(
@@ -44,13 +44,13 @@ def setup_platform(
 ) -> None:
     """Set up the sensor platform."""
     hm_data = HeatmasterData(HeatmasterAjax(config["ip"]))
-    sensors = [HeatMasterSensor(hm_data, data[0], data[1]) for data in SENSOR_LIST]
+    sensors = [HeatMasterSensor(hm_data, data[0], data[1], data[2], data[3]) for data in SENSOR_LIST]
     add_entities(sensors)
 
 class HeatMasterSensor(Entity):
     """Representation of a Sensor."""
 
-    def __init__(self, heatmaster_data, name, value_key):
+    def __init__(self, heatmaster_data, name, value_key, device_class, unit_of_mesurement):
         super().__init__()
         self._name = f"{DOMAIN} {name}"
         self._value_key = value_key
@@ -59,6 +59,10 @@ class HeatMasterSensor(Entity):
         self._available = True
         self.hm = heatmaster_data
         self.data = None
+        
+        self._attr_state_class = SensorStateClass.MEASUREMENT
+        self._attr_device_class = device_class
+        self._attr_native_unit_of_measurement = unit_of_mesurement
 
     @property
     def name(self) -> str:
