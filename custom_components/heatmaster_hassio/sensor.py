@@ -26,7 +26,7 @@ SENSOR_LIST = [["Water Temperature", "Temperature", SensorDeviceClass.TEMPERATUR
                ["O2", "o2", "oxygen", "%"],
                ["Top Damper", "Top Damper", "damper_pos", "%"],
                ["Bottom Damper", "Bot Damper", "damper_pos", "%"],
-               ["Furnace Status", "Status", None, None]]
+               ["Furnace Status", "Status", "status", None]]
 
 def setup_platform(
     hass: HomeAssistant,
@@ -52,9 +52,10 @@ class HeatMasterSensor(SensorEntity):
         self.hm = heatmaster_data
         self.data = None
         
-        self._attr_state_class = SensorStateClass.MEASUREMENT
+        # self._attr_state_class = SensorStateClass.MEASUREMENT
         self._attr_device_class = device_class
-        self._attr_native_unit_of_measurement = unit_of_mesurement
+        if unit_of_mesurement is not None:
+            self._attr_native_unit_of_measurement = unit_of_mesurement
 
     @property
     def name(self) -> str:
@@ -94,6 +95,7 @@ class HeatMasterSensor(SensorEntity):
         This is the only method that should fetch new data for Home Assistant.
         """
         self.hm.update()
+        _LOGGER.debug(f"Sensor Update Data: {self.hm.data}")
         self._value = self.hm.data[self._value_key]
 
 class HeatmasterData:
@@ -104,3 +106,4 @@ class HeatmasterData:
     @cached(cache=TTLCache(maxsize=10, ttl=5))
     def update(self):
         self.data = self.heatmaster_ajax.get_data()
+        _LOGGER.debug(f"Raw Data from HeatMasterClass: {self.data}")

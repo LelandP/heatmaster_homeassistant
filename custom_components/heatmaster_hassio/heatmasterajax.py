@@ -3,6 +3,7 @@ import logging
 from xml.dom.minidom import parseString
 import requests
 
+_LOGGER = logging.getLogger(__name__)
 
 class HeatmasterAjax():
     """
@@ -52,7 +53,7 @@ class HeatmasterAjax():
                                cookies={"Security-Hint": login1_keys[1]},
                                timeout=30)
         self.auth_cookie = {"Security-Hint": login2.text.split(',')[1]}
-        logging.info("Login for heatmaster was successful")
+        _LOGGER.info("Login for heatmaster was successful")
 
     def _generate_server_challenge(self,
                                    server_key: int) -> int:
@@ -90,11 +91,14 @@ class HeatmasterAjax():
             #ID 1 is the title that contains the status of the furnance.
             if item_val[0][1] == '1':
                 if "Heating" in item_val[1][1].strip(' '):
-                    logging.info("Set sate to Heating")
+                    _LOGGER.info("Set sate to Heating")
                     self.status = 0
                 elif "Idle" in item_val[1][1].strip(' '):
-                    logging.info("Set sate to Idle")
+                    _LOGGER.info("Set sate to Idle")
                     self.status = 1
+                elif "Cold" in item_val[1][1].strip(' '):
+                    _LOGGER.info("Set sate to Cold Start")
+                    self.status = 2
 
     def get_data(self) -> dict:
         """
@@ -103,15 +107,24 @@ class HeatmasterAjax():
         returns: A dictionary of data.
         """
         response = {}
+        #this is bad code, need to refactor but lazy atm :)
         if self.status == 0:
             response["Status"] = "Heating"
             data = requests.post(self.url, data="MSGGET:bm,0", cookies=self.auth_cookie,
                                  timeout=30)
-        else:
+        elif self.status == 1:
             response["Status"] = "Idle"
             data = requests.post(self.url, data="MSGGET:bm,1", cookies=self.auth_cookie,
                                  timeout=30)
-        logging.debug(data.text)
+        elif self.status == 2:
+            response["Status"] = "Cold Start"
+            data = requests.post(self.url, data="MSGGET:bm,14", cookies=self.auth_cookie,
+                                 timeout=30)
+        _LOGGER.debug(data.text)
+
+        if "Session Expired" in data.text:
+            self.login()
+
         document = parseString(data.text)
 
         #The AJAX console required a different MSGGET based on the status,
@@ -123,7 +136,7 @@ class HeatmasterAjax():
             self._set_status(status_doc)
             return None
 
-        logging.info("Polled data from Heatmaster")
+        _LOGGER.info("Polled data from Heatmaster")
         for item in document.getElementsByTagName("p"):
             item_val = item.attributes.items()
             if item_val[1][1] == 'n':
