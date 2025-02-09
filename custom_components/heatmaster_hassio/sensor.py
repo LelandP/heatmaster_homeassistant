@@ -11,7 +11,7 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.helpers.entity import Entity
-from homeassistant.const import TEMP_FAHRENHEIT
+from homeassistant.const import UnitOfTemperature
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.entity import DeviceInfo
@@ -22,7 +22,7 @@ _LOGGER = logging.getLogger(__name__)
 
 DOMAIN="heatmaster_hassio"
 #name, key name, Device Class, state_class
-SENSOR_LIST = [["Water Temperature", "Temperature", SensorDeviceClass.TEMPERATURE, TEMP_FAHRENHEIT],
+SENSOR_LIST = [["Water Temperature", "Temperature", SensorDeviceClass.TEMPERATURE, UnitOfTemperature.FAHRENHEIT],
                ["O2", "o2", "oxygen", "%"],
                ["Top Damper", "Top Damper", "damper_pos", "%"],
                ["Bottom Damper", "Bot Damper", "damper_pos", "%"],
