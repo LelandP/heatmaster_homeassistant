@@ -2,20 +2,14 @@
 from __future__ import annotations
 
 import logging
-from cachetools import cached, TTLCache
-from homeassistant.util import Throttle
 
-from homeassistant.components.sensor import (
-    SensorDeviceClass,
-    SensorEntity,
-    SensorStateClass,
-)
-from homeassistant.helpers.entity import Entity
+from cachetools import TTLCache, cached
+from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
 from homeassistant.const import UnitOfTemperature
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
+
 from .heatmasterajax import HeatmasterAjax
 
 _LOGGER = logging.getLogger(__name__)
@@ -24,9 +18,12 @@ DOMAIN="heatmaster_hassio"
 #name, key name, Device Class, state_class
 SENSOR_LIST = [["Water Temperature", "Temperature", SensorDeviceClass.TEMPERATURE, UnitOfTemperature.FAHRENHEIT],
                ["O2", "o2", "oxygen", "%"],
-               ["Top Damper", "Top Damper", "damper_pos", "%"],
+               # This can be the text "MaxAir" during Cold Start, not only a percentage.
+               ["Top Damper", "Top Damper", None, None],
                ["Bottom Damper", "Bot Damper", "damper_pos", "%"],
-               ["Furnace Status", "Status", "status", None]]
+               ["Furnace Status", "Status", "status", None],
+               ["Boiler Alarm", "Alarm", None, None],
+               ["Boiler Bypass", "Bypass", None, None]]
 
 def setup_platform(
     hass: HomeAssistant,
@@ -40,7 +37,7 @@ def setup_platform(
     add_entities(sensors)
 
 class HeatMasterSensor(SensorEntity):
-    """Representation of a Sensor."""
+    """Representation of a Sensor configured via legacy YAML."""
 
     def __init__(self, heatmaster_data, name, value_key, device_class, unit_of_mesurement):
         super().__init__()
@@ -77,26 +74,24 @@ class HeatMasterSensor(SensorEntity):
         return self._value
 
     @property
-    def device_info(self):
-        return DeviceInfo(
-            identifiers={
-                # Serial numbers are unique identifiers within a specific domain
-                (DOMAIN, self._unique_id)
-            },
-            name="Heatmaster",
-            manufacturer="Heatmaster",
-            model="LOGO8",
-            sw_version="1.0.0",
-            via_device=(DOMAIN, "Heatmaster")
-        )
+    def native_unit_of_measurement(self) -> str | None:
+        """Show percent for numeric damper readings, but not for MaxAir text."""
+        if self._value_key == "Top Damper":
+            return "%" if isinstance(self._value, (int, float)) else None
+        return getattr(self, "_attr_native_unit_of_measurement", None)
 
     def update(self) -> None:
-        """Fetch new state data for the sensor.
-        This is the only method that should fetch new data for Home Assistant.
-        """
+        """Fetch the shared poll result and mark unavailable values appropriately."""
         self.hm.update()
-        _LOGGER.debug(f"Sensor Update Data: {self.hm.data}")
-        self._value = self.hm.data[self._value_key]
+        data = self.hm.data
+        if not data:
+            self._available = False
+            self._value = None
+            _LOGGER.warning("No Heatmaster data available for %s", self._value_key)
+            return
+
+        self._available = True
+        self._value = data.get(self._value_key)
 
 class HeatmasterData:
     def __init__(self, heatmaster_ajax):
